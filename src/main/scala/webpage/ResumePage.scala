@@ -9,10 +9,10 @@ object ResumePage extends JSApp {
   val htmlFrag = {
     html(
       head(title:="Resume")(
-        jsincl("ghpage-fastopt.js")
+        jsincl("ghpage-opt.js")
       ),
       body(
-        embed(src:="./src/main/resources/Resume.pdf", width:="100%", height:="100%")
+        embed(src:="static/Resume.pdf", width:="100%", height:="100%")
       )
     )
   }

@@ -9,7 +9,7 @@ object IndexPage extends JSApp {
   val htmlFrag = {
     html(
       head(title:="Index")(
-        jsincl("ghpage-fastopt.js")
+        jsincl("ghpage-opt.js")
       ),
       body(
         script(`type`:="text/javascript")("webpage.IndexPage().main();")
