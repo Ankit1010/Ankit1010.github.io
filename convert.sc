@@ -1,60 +1,37 @@
 import $ivy.`com.atlassian.commonmark:commonmark:0.5.1`
 import $ivy.`com.lihaoyi::ammonite-ops:0.8.0`
 import $ivy.`com.lihaoyi::scalatags:0.6.2`
-import $ivy.`org.scalikejdbc::scalikejdbc:2.5.0`
-import $ivy.`com.h2database:h2:1.4.193`
 import ammonite.ops._
 import scalatags.Text.all._
-// case class MDPost(path:Path)
 
-// case class MDPost(title:String,content:String,timestamp:java.sql.Timestamp)
-case class HTMLPost(title:String,content:String)
+case class HTMLPost(title:String,content:String,date:String)
 object HTMLPost {
-  def fromPath(path:Path) = {
+  def fromPath(mdPath:Path) = {
     import org.commonmark.node._
     import org.commonmark.parser.Parser
     import org.commonmark.html.HtmlRenderer
 
     val parser = Parser.builder().build();
-    val document = parser.parse(read! path);
+    val document = parser.parse(read! mdPath);
     val renderer = HtmlRenderer.builder().build();
     val htmlOut = renderer.render(document);
 
-    val Array(postNum,name) = path.last.split(" - ")
-    val htmlName = name.stripSuffix(".md").replace(" ", "-").toLowerCase
-    HTMLPost(htmlName,htmlOut)
+    val Array(dateStr,postTitle,md) = mdPath.last.split("\\.")
+    HTMLPost(title=postTitle,content=htmlOut,date=dateStr)
   }
 }
 
-def mdPathToHtml(mdPath: Path) = {
-  val Array(postNum,name) = mdPath.last.split(" - ")
-  val htmlName = name.stripSuffix(".md").replace(" ", "-").toLowerCase + ".html"
-  cwd/"html_posts"/htmlName
+def htmlName(mdPath: Path) = {
+  /* Expecting posts named like "ddmmyy.title.md" */
+  val Array(dateStr,postTitle,md) = mdPath.last.split("\\.")
+  dateStr + postTitle
 }
 
-def mdPosts(): Seq[Path] = (ls! cwd/'posts)
+def mdPathToHtml(mdPath: Path) = {
+  cwd/"posts"/(htmlName(mdPath) + ".html")
+}
 
-
-// import scalikejdbc._
-
-// initialize JDBC driver & connection pool
-// Class.forName("org.h2.Driver")
-// ConnectionPool.singleton("jdbc:h2:file:./posts", "sa", "")
-//
-// // ad-hoc session provider on the REPL
-// implicit val session = AutoSession
-//
-// def createPostsTable() = {
-//   sql"""
-//   create table posts (
-//     title varchar not null primary key,
-//     content varchar,
-//     created_at timestamp not null
-//   )
-//   """.execute.apply()
-// }
-
-// try { createPostsTable } catch { case _ => () }
+def mdPosts(): Seq[Path] = (ls! cwd/"md_posts")
 
 for (mdPost <- mdPosts) {
   val htmlPost = HTMLPost.fromPath(mdPost)
@@ -63,21 +40,18 @@ for (mdPost <- mdPosts) {
     mdPathToHtml(mdPost),
     pageSkeletonWith(htmlPost.content, Some(htmlPost.title))
   )
-  // sql"""
-  //   insert into posts (title,content,created_at) values
-  //   (${htmlPost.title},${htmlPost.content},current_timestamp)
-  // """.update.apply()
 }
 
+rm! cwd/"index.html"
 write.over(
   cwd/"index.html",
   indexPage()
 )
 
 def postListing(post: HTMLPost) = {
-  div(
+  div(`class`:="post-link",
     a(
-      href:=s"html_posts/${post.title}.html#disqus_thread",
+      href:=s"posts/${post.date}${post.title}.html",
       h1(post.title)
     )
   )
@@ -86,15 +60,10 @@ def postListing(post: HTMLPost) = {
 
 def indexPage() = {
   val posts = for (mdPost <- mdPosts) yield HTMLPost.fromPath(mdPost)
-  val postListing = div(
-    for (post <- posts) yield
-    a(href:=f"html_posts/${post.title}.html#disqus_thread", h1(post.title))
-  ).render
-
-  pageSkeletonWith(postListing, None)
+  pageSkeletonWith(div(posts.map(postListing)).render,None)
 }
 
-def pageSkeletonWith(innerContent: String, postTitle: Option[String])= {
+def pageSkeletonWith(innerContent: String, disqusPostTitle: Option[String])= {
   val cssIncludes = List(
     "https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css",
     "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.1.0/styles/github-gist.min.css"
@@ -121,7 +90,7 @@ def pageSkeletonWith(innerContent: String, postTitle: Option[String])= {
         ),
         div(`class`:="row",
           div(id:="footer",
-            postTitle.map(pTitle=>disqusSnippet(pTitle)).getOrElse(div())
+            disqusPostTitle.map(postTitle=>disqusSnippet(postTitle)).getOrElse(div())
           )
         )
       ),
@@ -141,7 +110,7 @@ def disqusSnippet(postTitle: String) = {
         |  *  LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables*/
         |
         |  var disqus_config = function () {
-        |  this.page.url = "http://ankitson.github.io/html_posts/${postTitle}.html"; // Replace PAGE_URL with your page's canonical URL variable
+        |  this.page.url = "http://ankitson.github.io/posts/${postTitle}.html"; // Replace PAGE_URL with your page's canonical URL variable
         |  this.page.identifier = "$postTitle"; // Replace PAGE_IDENTIFIER with your page's unique identifier variable
         |  };
         |
