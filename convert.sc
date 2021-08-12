@@ -1,8 +1,15 @@
 import $ivy.`com.atlassian.commonmark:commonmark:0.5.1`
 import $ivy.`com.lihaoyi::ammonite-ops:0.8.0`
 import $ivy.`com.lihaoyi::scalatags:0.6.2`
+import $ivy.`com.github.japgolly.scalacss::core:0.5.1`
+import $ivy.`com.github.japgolly.scalacss::ext-scalatags:0.5.1`
 import ammonite.ops._
+import scalatags.Text._
 import scalatags.Text.all._
+import scalacss.Defaults._
+import scalacss.ScalatagsCss._
+
+import $file.stylesheets,stylesheets.MyStyles
 
 case class HTMLPost(title:String,content:String,date:String)
 object HTMLPost {
@@ -65,12 +72,12 @@ def indexPage() = {
 
 def pageSkeletonWith(innerContent: String, disqusPostTitle: Option[String])= {
   val cssIncludes = List(
-    "https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css",
     "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.1.0/styles/github-gist.min.css"
   ).map(url => link(href:=url,rel:="stylesheet",`type`:="text/css"))
 
   "<!DOCTYPE html>" +
   html(
+    MyStyles.render[TypedTag[String]],
     head(
       meta(charset:="utf-8"),meta(name:="viewport", content:="width=device-width, initial-scale=1"),
       cssIncludes,
@@ -80,18 +87,20 @@ def pageSkeletonWith(innerContent: String, disqusPostTitle: Option[String])= {
     ),
     body(
       div(`class`:="container",
-        div(`class`:="row",
-          div(id:="sidebar",`class`:="col-md-3",
-            h1("Ankit's Blog")
+        div(`class`:="row header",
+          p("I am navbar hear me roar")
+        ),
+        div(`class`:="row content",
+          div(`class`:="sidebar",
+            a(href:="http://ankitson.github.io", h1("Ankit's Blog"))
           ),
-          div(id:="content",`class`:="col-md-9",
+          div(`class`:="post",
             raw(innerContent)
           )
         ),
-        div(`class`:="row",
-          div(id:="footer",
-            disqusPostTitle.map(postTitle=>disqusSnippet(postTitle)).getOrElse(div())
-          )
+        div(`class`:="row footer",
+          p("I'm a footer"),
+          disqusPostTitle.map(postTitle=>disqusSnippet(postTitle)).getOrElse(div())
         )
       ),
       script(id:="dsq-count-scr", src:="//ankitson.disqus.com/count.js",attr("async"):="async")
